@@ -1,0 +1,16 @@
+{
+  "name": "irc/bot",
+  "require": {
+    "symfony/console": "dev-master",
+    "symfony/config": "dev-master",
+    "symfony/dependency-injection": "dev-master",
+    "symfony/event-dispatcher": "dev-master",
+    "symfony/finder": "dev-master",
+    "symfony/process": "dev-master",
+    "symfony/validator": "dev-master",
+    "symfony/yaml": "dev-master"
+  },
+  "autoload": {
+      "psr-0": { "": ["src/","lib/"] }
+  }
+}

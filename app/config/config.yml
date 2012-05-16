@@ -1,0 +1,8 @@
+irc:
+  server:     irc.freenode.net
+  port:       6667
+  username:   bobobot
+  nickname:   bobobot
+  hostname:   example.com
+  servername: exemple.com
+  realname:   "BoBo Bot"

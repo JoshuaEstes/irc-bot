@@ -1,0 +1,8 @@
+#
+# You will need to add a service here to connect to the bot and listen for events
+#
+services:
+  # This name does not matter too much. As long as this is a unique name, it should
+  # be fine.
+  unique_name:
+    class: 'Core\PingSubscriber'

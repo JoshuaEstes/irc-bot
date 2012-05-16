@@ -1,0 +1,123 @@
+#!/usr/bin/env php
+<?php
+
+/**
+ * IRC Bot
+ *
+ * @todo Refactor this bad boy
+ */
+set_time_limit(0);
+ini_set('display_errors', 'on');
+require __DIR__ . '/vendor/autoload.php';
+
+use Symfony\Component\Config\FileLocator;
+use Symfony\Component\Config\Loader\DelegatingLoader;
+use Symfony\Component\Config\Loader\LoaderResolver;
+use Symfony\Component\Config\Resource\FileResource;
+use Symfony\Component\Console\Input\StringInput;
+use Symfony\Component\Console\Output\ConsoleOutput;
+use Symfony\Component\Console\Output\StreamOutput;
+use Symfony\Component\DependencyInjection\ContainerBuilder;
+use Symfony\Component\DependencyInjection\Loader\YamlFileLoader;
+use Symfony\Component\EventDispatcher\ContainerAwareEventDispatcher;
+use Symfony\Component\EventDispatcher\GenericEvent;
+use Symfony\Component\Finder\Finder;
+use \YamlConfigLoader;
+use \Packet;
+
+/**
+ * IRC Bot
+ */
+class Bot {
+
+    /**
+     * @var Symfony\Component\EventDispatcher\ContainerAwareEventDispatcher
+     */
+    protected $dispatcher;
+    /**
+     * @var Symfony\Component\Console\Output\ConsoleOutput
+     */
+    protected $output;
+    /**
+     * @var Symfony\Component\Console\Output\StreamOutput
+     */
+    protected $socket;
+    /**
+     * @var array
+     */
+    protected $config;
+
+    /**
+     * Start this bad as IRC bot
+     */
+    public function __construct() {
+        $this->initialize();
+        $this->output->writeln('IRC Bot starting');
+        // dispatch pre connect
+        $this->socket = new StreamOutput(fsockopen($this->config['irc']['server'], $this->config['irc']['port']));
+        // dispatch post connect
+        $this->send('USER joshuaBot example.net JB :JBot');
+        $this->send('NICK joshuaBot');
+        do {
+            $raw = trim(fgets($this->socket->getStream(), 512));
+            if (empty($raw)) {
+                continue;
+            }
+            // this needs to go away, output should be handled by events
+            $this->output->writeln($raw);
+            $packet = new Packet($raw);
+            $eventName = sprintf('command.%s', strtolower($packet->getCommand()));
+            $this->dispatcher->dispatch($eventName, new GenericEvent($packet, array(
+                    'output' => $this->output,
+                    'socket' => $this->socket
+                )));
+        }
+        while (true);
+    }
+
+    protected function initialize() {
+        $locator = new FileLocator(array(__DIR__ . '/app/config'));
+        $configYml = $locator->locate('config.yml');
+        $loaderResolver = new LoaderResolver(array(new YamlConfigLoader($locator)));
+        $delegatingLoader = new DelegatingLoader($loaderResolver);
+        $this->config = $delegatingLoader->load($configYml);
+        $this->output = new ConsoleOutput();
+        $this->setupDispatcher();
+    }
+
+    protected function setupDispatcher() {
+        $container = new ContainerBuilder();
+        $loader = new YamlFileLoader($container, new FileLocator(array(__DIR__ . '/app/config')));
+        $loader->load('services.yml');
+        $this->dispatcher = new ContainerAwareEventDispatcher($container);
+        $servicesYml = $container->getDefinitions();
+
+        foreach ($servicesYml as $listen => $service) {
+            /* @var $service Symfony\Component\DependencyInjection\Definition */
+            $this->dispatcher->addSubscriberService($listen, $service->getClass());
+        }
+    }
+
+    /**
+     * Sends a raw message to the IRC server
+     *
+     * @param string $message
+     */
+    function send($message) {
+        $this->output->writeln($message);
+        $this->socket->writeln($message);
+    }
+
+    /**
+     * Send a packet to the IRC server
+     *
+     * @param Packet $packet
+     */
+    function sendPacket(Packet $packet) {
+        $this->send($packet->getRaw());
+    }
+
+}
+
+// start this bitch
+$bot = new Bot();
