@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Description
+ * Packet that is received/sent from/to the IRC server
  *
  * @package
  * @subpackage
@@ -19,14 +19,27 @@ class Packet {
      */
     protected $raw, $prefix, $command, $parameters, $trailing;
 
+    /**
+     * Create a new packet, can set everything at once or set them one at a time.
+     *
+     * Syntax:
+     *
+     *     :<prefix> <command> <parameters> :<trailing>
+     *
+     * @param string $raw
+     */
     public function __construct($raw = null) {
         if (null !== $raw) {
             $this->setRaw($raw);
         }
     }
 
+    /**
+     * This is used to parse a packet and break it apart into it's various
+     * components
+     */
     protected function parse() {
-        // :<prefix> <command> <params> :<trailing>
+        // :<prefix> <command> <parameters> :<trailing>
         $prefixEnd = 0;
         if (substr($this->raw, 0, 1) == ':') {
             $prefixEnd = strpos($this->raw, ' ');
@@ -45,11 +58,22 @@ class Packet {
         $this->parameters = trim(implode(' ', $commandAndParameters));
     }
 
+    /**
+     * Will 'reset' the packet
+     *
+     * @param string $raw
+     */
     public function setRaw($raw) {
         $this->raw = $raw;
         $this->parse();
     }
 
+    /**
+     * This will return a string in the format that it needs to be sent to the IRC
+     * server
+     *
+     * @return string
+     */
     public function getRaw() {
         // :<prefix> <command> <params> :<trailing>
         $raw = '';
@@ -69,34 +93,61 @@ class Packet {
         return $raw;
     }
 
+    /**
+     * @param string $prefix
+     */
     public function setPrefix($prefix) {
         $this->prefix = $prefix;
     }
 
+    /**
+     * @return string
+     */
     public function getPrefix() {
         return $this->prefix;
     }
 
+    /**
+     * Commands are all uppercase, this function will make sure that the command
+     * is uppercase if you use this
+     *
+     * @param string $command
+     */
     public function setCommand($command) {
         $this->command = strtoupper($command);
     }
 
+    /**
+     * @return string
+     */
     public function getCommand() {
         return $this->command;
     }
 
+    /**
+     * @param string $parameters
+     */
     public function setParameters($parameters) {
         $this->parameters = $parameters;
     }
 
+    /**
+     * @return string
+     */
     public function getParameters() {
         return $this->parameters;
     }
 
+    /**
+     * @param string $trailing
+     */
     public function setTrailing($trailing) {
         $this->trailing = $trailing;
     }
 
+    /**
+     * @return string
+     */
     public function getTrailing() {
         return $this->trailing;
     }
