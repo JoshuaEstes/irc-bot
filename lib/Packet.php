@@ -34,6 +34,10 @@ class Packet {
         }
     }
 
+    public function __toString() {
+        return $this->getRaw();
+    }
+
     /**
      * This is used to parse a packet and break it apart into it's various
      * components
@@ -87,7 +91,7 @@ class Packet {
             $raw .= ' ' . $this->parameters;
         }
         if (null !== $this->trailing) {
-            $raw .= ':' . $this->trailing;
+            $raw .= ' :' . $this->trailing;
         }
         $raw = trim($raw);
         return $raw;
@@ -125,10 +129,13 @@ class Packet {
     }
 
     /**
-     * @param string $parameters
+     * @param string|array $parameters
      */
     public function setParameters($parameters) {
-        $this->parameters = $parameters;
+        if (!is_array($parameters)) {
+            $parameters = explode(' ', $parameters);
+        }
+        $this->parameters = implode(' ', $parameters);
     }
 
     /**
@@ -150,6 +157,36 @@ class Packet {
      */
     public function getTrailing() {
         return $this->trailing;
+    }
+
+    /**
+     * @return string
+     */
+    public function getNick() {
+        if (strpos($this->getPrefix(), '!') && strpos($this->getPrefix(), '@')) {
+            return substr($this->getPrefix(), 0, strpos($this->getPrefix(), '!'));
+        }
+        return null;
+    }
+
+    /**
+     * @return string
+     */
+    public function getUser() {
+        if (strpos($this->getPrefix(), '!') && strpos($this->getPrefix(), '@')) {
+            return substr($this->getPrefix(), strpos($this->getPrefix(), '!') + 1, (strpos($this->getPrefix(), '@') - strlen($this->getNick()) - 1));
+        }
+        return null;
+    }
+
+    /**
+     * @return string
+     */
+    public function getHost() {
+        if (strpos($this->getPrefix(), '!') && strpos($this->getPrefix(), '@')) {
+            return substr($this->getPrefix(), strpos($this->getPrefix(), '@') + 1);
+        }
+        return null;
     }
 
 }

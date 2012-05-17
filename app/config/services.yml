@@ -4,5 +4,5 @@
 services:
   # This name does not matter too much. As long as this is a unique name, it should
   # be fine.
-  unique_name:
-    class: 'Core\PingSubscriber'
+  core:
+    class: 'Core\Core'

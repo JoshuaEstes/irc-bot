@@ -1,3 +1,5 @@
+debug: true
+
 irc:
   server:     irc.freenode.net
   port:       6667
@@ -6,3 +8,7 @@ irc:
   hostname:   example.com
   servername: exemple.com
   realname:   "BoBo Bot"
+
+trusted_users:
+  - f1gm3nt
+  - testuser

@@ -46,78 +46,112 @@ class Bot {
      * @var array
      */
     protected $config;
-
     /**
-     * Start this bad as IRC bot
+     * @var Bot
      */
-    public function __construct() {
-        $this->initialize();
+    private static $instance;
+
+    public static function getInstance() {
+        if (!self::$instance) {
+            self::$instance = new Bot();
+        }
+        return self::$instance;
+    }
+
+    protected function __construct() {
+
+    }
+
+    public function run() {
+        $this->output = new ConsoleOutput();
         $this->output->writeln('IRC Bot starting');
-        // dispatch pre connect
+        $this->loadConfig();
+        $this->setupDispatcher();
         $this->socket = new StreamOutput(fsockopen($this->config['irc']['server'], $this->config['irc']['port']));
-        // dispatch post connect
-        $this->send('USER joshuaBot example.net JB :JBot');
-        $this->send('NICK joshuaBot');
+        $this->dispatcher->dispatch('connect_post', new GenericEvent($this, array(
+                'context' => self::getInstance(),
+            )));
         do {
             $raw = trim(fgets($this->socket->getStream(), 512));
             if (empty($raw)) {
                 continue;
             }
-            // this needs to go away, output should be handled by events
-            $this->output->writeln($raw);
+            if ($this->config['debug']) {
+                // this needs to write to a log
+                $this->output->writeln($raw);
+            }
             $packet = new Packet($raw);
             $eventName = sprintf('command.%s', strtolower($packet->getCommand()));
-            $this->dispatcher->dispatch($eventName, new GenericEvent($packet, array(
-                    'output' => $this->output,
-                    'socket' => $this->socket
+            $this->dispatcher->dispatch($eventName, new GenericEvent($this, array(
+                    'context' => self::getInstance(),
+                    'packet' => $packet,
                 )));
         }
         while (true);
     }
 
-    protected function initialize() {
+    /**
+     * @return array
+     */
+    public function getConfig($key = null) {
+        if (null !== $key) {
+            if (isset($this->config[$key])) {
+                return $this->config[$key];
+            }
+            return null;
+        }
+        return $this->config;
+    }
+
+    /**
+     *
+     * @return Symfony\Component\EventDispatcher\ContainerAwareEventDispatcher
+     */
+    public function getDispatcher() {
+        return $this->dispatcher;
+    }
+
+    /**
+     * @return Symfony\Component\Console\Output\ConsoleOutput
+     */
+    public function getOutput() {
+        return $this->output;
+    }
+
+    /**
+     * @return Symfony\Component\Console\Output\StreamOutput
+     */
+    public function getSocket() {
+        return $this->socket;
+    }
+
+    /**
+     * Load the config settings
+     */
+    protected function loadConfig() {
         $locator = new FileLocator(array(__DIR__ . '/app/config'));
         $configYml = $locator->locate('config.yml');
         $loaderResolver = new LoaderResolver(array(new YamlConfigLoader($locator)));
         $delegatingLoader = new DelegatingLoader($loaderResolver);
         $this->config = $delegatingLoader->load($configYml);
-        $this->output = new ConsoleOutput();
-        $this->setupDispatcher();
     }
 
+    /**
+     * Setup the dispatcher
+     */
     protected function setupDispatcher() {
         $container = new ContainerBuilder();
         $loader = new YamlFileLoader($container, new FileLocator(array(__DIR__ . '/app/config')));
         $loader->load('services.yml');
         $this->dispatcher = new ContainerAwareEventDispatcher($container);
         $servicesYml = $container->getDefinitions();
-
         foreach ($servicesYml as $listen => $service) {
             /* @var $service Symfony\Component\DependencyInjection\Definition */
             $this->dispatcher->addSubscriberService($listen, $service->getClass());
         }
     }
 
-    /**
-     * Sends a raw message to the IRC server
-     *
-     * @param string $message
-     */
-    function send($message) {
-        $this->output->writeln($message);
-        $this->socket->writeln($message);
-    }
-
-    /**
-     * Send a packet to the IRC server
-     *
-     * @param Packet $packet
-     */
-    function sendPacket(Packet $packet) {
-        $this->send($packet->getRaw());
-    }
-
 }
 
 // start this bitch
-$bot = new Bot();
+Bot::getInstance()->run();
